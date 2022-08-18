@@ -1,0 +1,144 @@
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { FriendEntity } from 'src/model/entities/friend.entity';
+import { FriendRepository } from 'src/model/repositories/friend.repository';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FriendRequestEntity } from 'src/model/entities/friend-request.entity';
+import { FriendRequestRepository } from 'src/model/repositories/friend-request.repository';
+import { UserService } from '../user/user.service';
+import { FriendSendReqDto } from './dto/friend.sendReq.dto';
+import { FriendAcceptDto } from './dto/friend.accept.dto';
+
+@Injectable()
+export class FriendService {
+  constructor(
+    @InjectRepository(FriendEntity) private friendRepo: FriendRepository,
+    @InjectRepository(FriendRequestEntity)
+    private friendReqRepo: FriendRequestRepository,
+    private readonly userService: UserService,
+  ) {}
+
+  async checkRequest(userId: number, strangerId: number): Promise<boolean> {
+    const isRequest = await this.friendReqRepo
+      .createQueryBuilder('friend_request_entity')
+      .where('(user_userId= :userId AND requester_userId= :strangerId)', {
+        userId: userId,
+        strangerId: strangerId,
+      });
+    return isRequest ? true : false;
+  }
+
+  async checkFriendRequest(userId: number, strangerId: number): Promise<void> {
+    if (await this.checkRequest(userId, strangerId)) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'THIS_USER_SENT_REQUEST_FOR_YOU',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (await this.checkRequest(strangerId, userId)) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'YOU_SENT_REQUEST_TO_THIS_USER',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return;
+  }
+
+  async checkFriend(userId: number, strangerId: number): Promise<boolean> {
+    const isFriend = await this.friendRepo
+      .createQueryBuilder('friend_entity')
+      .where(
+        '(user_userId= :userId AND friend_userId= :strangerId) OR (user_userId= :strangerId AND friend_userId= :userId)',
+        {
+          userId: userId,
+          strangerId: strangerId,
+        },
+      )
+      .getOne();
+    return isFriend ? true : false;
+  }
+
+  async sendFriendRequest(userId: number, sendFriendReq: FriendSendReqDto) {
+    const strangerId = parseInt(String(sendFriendReq.strangerId));
+    if (!strangerId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'EMPTY_STRANGER_PAYLOAD',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (userId === strangerId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'YOU_CAN_NOT_SEND_REQUEST_YOURSELF',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    await this.userService.getUserById(strangerId); //kiem tra nguoi duoc gui yeu cau co ton tai khong
+    const checkIsFriend = await this.checkFriend(userId, strangerId);
+    await this.checkFriendRequest(userId, strangerId);
+    if (!checkIsFriend) {
+      // put data to db
+      await this.friendReqRepo
+        .createQueryBuilder()
+        .insert()
+        .into(FriendRequestEntity)
+        .values([
+          { user_: { userId: strangerId }, requester_: { userId: userId } },
+        ])
+        .execute();
+    } else {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'BOTH_USER_ARE_FRIEND',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return;
+  }
+
+  async acceptFriendRequest(userId: number, friendAccept: FriendAcceptDto) {
+    const requesterId = parseInt(String(friendAccept.requesterId));
+    if (!requesterId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'EMPTY_REQUESTER_PAYLOAD',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (userId === requesterId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'YOU_CAN_NOT_ACCEPT_REQUEST_YOURSELF',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    await this.userService.getUserById(requesterId); //kiem tra nguoi duoc gui yeu cau co ton tai khong
+    if (await this.checkFriend(userId, requesterId)) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'BOTH_ARE_FRIEND',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (await this.checkRequest(userId, requesterId)) {
+    }
+  }
+}

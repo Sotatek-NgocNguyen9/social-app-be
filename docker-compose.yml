@@ -1,0 +1,34 @@
+version: '3'
+services:
+  fresher-k2-mysql:
+    image: mysql:8.0.25
+    container_name: fresher-k2-mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --sql_mode="" --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: 'won123'
+      MYSQL_DATABASE: fresherk2
+      MYSQL_USER: 'wonderland'
+      MYSQL_PASSWORD: 'won123'
+      LANG: C.UTF-8
+    ports:
+      - 13306:3306
+
+  fresher-k2-redis:
+    image: 'redis:6-alpine'
+    container_name: fresher-k2-redis
+    ports:
+      - 16379:6379
+  
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: pma
+    links:
+      - fresher-k2-mysql
+    environment:
+      PMA_HOST: fresher-k2-mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+    restart: always
+    ports:
+      - 8081:80
+
