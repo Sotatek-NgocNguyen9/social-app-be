@@ -17,25 +17,20 @@ export class QueueEmailProcessor {
   @Process(QUEUE_TOPIC.EMAIL_SEND)
   async processEmail(jobData: Job) {
     const secretToken = uuidv4();
-    await this.cacheManager.set(secretToken, jobData.data.userId, { ttl: 60 });
+    await this.cacheManager.set(secretToken, jobData.data.userId, {
+      ttl: parseInt(process.env.REDIS_SECRET_TOKEN_TTL),
+    });
     const CFpayload = {
-      confirmUrl: secretToken,
+      confirmUrl: `${process.env.FRONTEND_BASE_URL}auth/sign-up/?linkType=sign-up&secretToken=${secretToken}`,
       username: jobData.data.username,
     };
-    await this.mailerService
-      .sendMail({
-        to: jobData.data.username,
-        from: String(process.env.HOST_EMAIL),
-        subject: 'Welcome new user',
-        template: './email-confirm.hbs',
-        context: { CFpayload: CFpayload },
-      })
-      .then((data) => {
-        console.log(data);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+    await this.mailerService.sendMail({
+      to: jobData.data.username,
+      from: String(process.env.HOST_EMAIL),
+      subject: 'Welcome new user',
+      template: './email-confirm.hbs',
+      context: { CFpayload: CFpayload },
+    });
     return;
   }
 }
@@ -54,7 +49,6 @@ export class QueueImageProcessor {
 @Processor(QUEUE_NAME.FORGOT_PASSWORD_EMAIL)
 export class QueueForgotPasEmailProcessor {
   constructor(
-    private readonly queueService: QueueService,
     private readonly mailerService: MailerService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
@@ -62,25 +56,20 @@ export class QueueForgotPasEmailProcessor {
   @Process(QUEUE_TOPIC.FORGOT_PASSWORD_EMAIL_SEND)
   async processForgotPasEmail(jobData: Job) {
     const secretToken = uuidv4();
-    await this.cacheManager.set(secretToken, jobData.data.userId, { ttl: 60 });
+    await this.cacheManager.set(secretToken, jobData.data.userId, {
+      ttl: parseInt(process.env.REDIS_SECRET_TOKEN_TTL),
+    });
     const CFpayload = {
-      confirmUrl: secretToken,
+      confirmUrl: `${process.env.FRONTEND_BASE_URL}auth/reset-password/?linkType=reset-password&secretToken=${secretToken}`,
       username: jobData.data.username,
     };
-    await this.mailerService
-      .sendMail({
-        to: jobData.data.username,
-        from: String(process.env.HOST_EMAIL),
-        subject: 'Forgot Password',
-        template: './email-forgot-password.hbs',
-        context: { CFpayload: CFpayload },
-      })
-      .then((data) => {
-        console.log(data);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+    await this.mailerService.sendMail({
+      to: jobData.data.username,
+      from: String(process.env.HOST_EMAIL),
+      subject: 'Forgot Password',
+      template: './email-forgot-password.hbs',
+      context: { CFpayload: CFpayload },
+    });
     return;
   }
 }

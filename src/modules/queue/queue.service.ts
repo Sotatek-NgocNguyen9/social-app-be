@@ -51,9 +51,7 @@ export class QueueService {
         .resize(200)
         .webp({ effort: 3 })
         .toFile(path.join('uploads/profileimages', `200x${imageName}`));
-    } catch (error) {
-      console.log(error);
-    }
+    } catch (err) {}
     return;
   }
 }

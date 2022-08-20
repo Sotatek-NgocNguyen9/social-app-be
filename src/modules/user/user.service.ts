@@ -208,9 +208,7 @@ export class UserService {
     user.facebook = userInfoUpdate.facebook;
     user.instagram = userInfoUpdate.instagram;
     user.linkedin = userInfoUpdate.linkedin;
-    if (imageName) {
-      user.profileImage = imageName;
-    }
+    user.profileImage = imageName ? imageName : user.profileImage;
     await this.userRepo.save(user).catch((err) => {
       throw new HttpException(
         {
