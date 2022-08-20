@@ -7,15 +7,32 @@ import { FriendRequestRepository } from 'src/model/repositories/friend-request.r
 import { UserService } from '../user/user.service';
 import { FriendSendReqDto } from './dto/friend.sendReq.dto';
 import { FriendAcceptDto } from './dto/friend.accept.dto';
+import { UserEntity } from 'src/model/entities/user.entity';
+import { UserRepository } from 'src/model/repositories/user.repository';
+import { FriendDeleteRequestDto } from './dto/friend.deleteReq.dto';
 
 @Injectable()
 export class FriendService {
   constructor(
     @InjectRepository(FriendEntity) private friendRepo: FriendRepository,
+    @InjectRepository(UserEntity) private userRepo: UserRepository,
     @InjectRepository(FriendRequestEntity)
     private friendReqRepo: FriendRequestRepository,
     private readonly userService: UserService,
   ) {}
+
+  async validatePagi(page: number, pageSize: number): Promise<void> {
+    if (page > 0 && pageSize > 0) {
+      return;
+    }
+    throw new HttpException(
+      {
+        status: HttpStatus.BAD_REQUEST,
+        error: 'INVALID_PAGE_OR_PAGESIZE',
+      },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
 
   async checkRequest(userId: number, strangerId: number): Promise<boolean> {
     const isRequest = await this.friendReqRepo
@@ -23,7 +40,8 @@ export class FriendService {
       .where('(user_userId= :userId AND requester_userId= :strangerId)', {
         userId: userId,
         strangerId: strangerId,
-      });
+      })
+      .getOne();
     return isRequest ? true : false;
   }
 
@@ -108,6 +126,43 @@ export class FriendService {
     return;
   }
 
+  async deleteFriendRequest(
+    userId: number,
+    deleteFriendRequest: FriendDeleteRequestDto,
+  ): Promise<void> {
+    const requesterId = parseInt(String(deleteFriendRequest.requesterId));
+    if (!requesterId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'EMPTY_REQUESTER_PAYLOAD',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (await this.checkRequest(userId, requesterId)) {
+      // delete the request
+      await this.friendReqRepo
+        .createQueryBuilder('friend_request_entity')
+        .delete()
+        .from(FriendRequestEntity)
+        .where('requester_userId = :requesterId AND user_userId = :userId', {
+          requesterId: requesterId,
+          userId: userId,
+        })
+        .execute();
+    } else {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'THE_REQUEST_NOT_EXIST',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return;
+  }
+
   async acceptFriendRequest(userId: number, friendAccept: FriendAcceptDto) {
     const requesterId = parseInt(String(friendAccept.requesterId));
     if (!requesterId) {
@@ -139,6 +194,75 @@ export class FriendService {
       );
     }
     if (await this.checkRequest(userId, requesterId)) {
+      // do accept friend request
+      await this.friendRepo
+        .createQueryBuilder()
+        .insert()
+        .into(FriendEntity)
+        .values([
+          { user_: { userId: userId }, friend_: { userId: requesterId } },
+        ])
+        .execute();
+      await this.friendReqRepo
+        .createQueryBuilder()
+        .delete()
+        .from(FriendRequestEntity)
+        .where('(user_userId= :userId AND requester_userId= :requesterId)', {
+          userId: userId,
+          requesterId: requesterId,
+        })
+        .execute();
+    } else {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'THEY_NOT_SENT_REQUEST_YET',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
     }
+  }
+
+  async getAllFriendRequest(
+    userId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<UserEntity[]> {
+    this.validatePagi(page, pageSize);
+    const requests = await this.userRepo
+      .createQueryBuilder('ue')
+      .innerJoin(FriendRequestEntity, 'fe', 'ue.userId = fe.requester_userId')
+      .where('fe.user_userId = :userId', {
+        userId: userId,
+      })
+      .select(['ue.userId', 'ue.name', 'ue.profileImage', 'ue.username'])
+      .take(pageSize)
+      .skip((page - 1) * pageSize)
+      .getMany();
+    return requests;
+  }
+
+  async getAllFriend(
+    userId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<UserEntity[]> {
+    this.validatePagi(page, pageSize);
+    const friends = await this.userRepo
+      .createQueryBuilder('ue')
+      .innerJoin(
+        FriendEntity,
+        'fe',
+        'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
+      )
+      .where(
+        'ue.userId != :userId AND (fe.user_userId = userId OR fe.friend_userId = userId)',
+        { userId: userId },
+      )
+      .select(['ue.userId', 'ue.name', 'ue.profileImage', 'ue.username'])
+      .take(pageSize)
+      .skip((page - 1) * pageSize)
+      .getMany();
+    return friends;
   }
 }

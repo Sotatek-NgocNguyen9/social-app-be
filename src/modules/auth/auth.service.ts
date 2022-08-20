@@ -13,17 +13,10 @@ import { HttpException } from '@nestjs/common';
 import { AccessTokenDto } from './dto/access-token.dto';
 import { Cache } from 'cache-manager';
 import { UserInfoDto } from '../user/dto/user-info.dto';
-import { of } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 import { ForgotPasswordDto } from './dto/forgot-password';
 import { EmailConfirmDto } from '../queue/dto/email-confim.dto';
 import { MessageDto } from '../user/dto/message.dto';
-import { PayloadDto } from './dto/payload.dto';
-
-interface IPayload {
-  username: string;
-  userId: number;
-}
 
 @Injectable()
 export class AuthenticationService {
@@ -83,7 +76,7 @@ export class AuthenticationService {
   }
 
   async validateSecretToken(secretToken: string) {
-    const userId = await this.cacheManager.get(secretToken).catch((err) => {
+    const userId = await this.cacheManager.get(secretToken).catch(() => {
       throw new HttpException(
         {
           status: HttpStatus.UNAUTHORIZED,

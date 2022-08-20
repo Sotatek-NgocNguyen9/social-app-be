@@ -1,13 +1,22 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { FriendEntity } from 'src/model/entities/friend.entity';
 import { PostEntity } from 'src/model/entities/post.entity';
+import { UserEntity } from 'src/model/entities/user.entity';
+import { FriendRepository } from 'src/model/repositories/friend.repository';
 import { PostRepository } from 'src/model/repositories/post.repository';
+import { UserRepository } from 'src/model/repositories/user.repository';
 import { PostEditDto } from './dto/post.edit.dto';
 import { PostInfoDto } from './dto/post.info.dto';
+import { PostRawInfoDto } from './dto/post.raw.info.dto';
 
 @Injectable()
 export class PostService {
-  constructor(@InjectRepository(PostEntity) private postRepo: PostRepository) {}
+  constructor(
+    @InjectRepository(PostEntity) private postRepo: PostRepository,
+    @InjectRepository(UserEntity) private userRepo: UserRepository,
+    @InjectRepository(FriendEntity) private friendRepo: FriendRepository,
+  ) {}
 
   async validatePagi(page: number, pageSize: number): Promise<void> {
     if (page > 0 && pageSize > 0) {
@@ -20,6 +29,60 @@ export class PostService {
       },
       HttpStatus.BAD_REQUEST,
     );
+  }
+
+  async getRawPostById(
+    userId: number,
+    postId: number,
+  ): Promise<PostRawInfoDto> {
+    if (postId < 0 || !postId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'INVALID_POSTID_PAYLOAD',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const post = await this.postRepo
+      .createQueryBuilder('pe')
+      .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
+      .innerJoin(
+        FriendEntity,
+        'fe',
+        'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
+      )
+      .where(
+        '(pe.postId= :postId) AND (pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend")',
+        {
+          postId: postId,
+          userId: userId,
+        },
+      )
+      .select([
+        'pe.postId as postId',
+        'pe.secure as secure',
+        'pe.media as media',
+        'pe.createDate as createDate',
+        'pe.content as content',
+        'pe.user_userId as userId',
+        'ue.name as name',
+        'ue.profileImage as profileImage',
+        'ue.username as username',
+      ])
+      .orderBy('pe.createDate', 'DESC')
+      .getRawOne();
+    if (post) {
+      return post;
+    } else {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'CAN_NOT_FOUND_POST',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   async getPostById(postId: number): Promise<PostEntity> {
@@ -38,21 +101,6 @@ export class PostService {
       );
     }
     return post;
-  }
-
-  async getPostByUser(postId: number, userId: number): Promise<PostEntity> {
-    const post = await this.getPostById(postId);
-    if (post.user_.userId === userId || post.secure === 'public') {
-      return post;
-    } else {
-      throw new HttpException(
-        {
-          status: HttpStatus.BAD_REQUEST,
-          error: 'YOU_CANOT_SEE_THIS_POST',
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
   }
 
   validatePost(imageName: string, content: string) {
@@ -92,24 +140,41 @@ export class PostService {
     return post;
   }
 
-  async getFeeds({
-    userId,
-    page = 1,
-    pageSize = 5,
-  }: {
-    userId: number;
-    page: number;
-    pageSize: number;
-  }): Promise<PostEntity[]> {
-    this.validatePagi(page, pageSize);
-    const posts = await this.postRepo.find({
-      where: {},
-      order: {
-        createDate: 'DESC',
-      },
-      take: pageSize,
-      skip: (page - 1) * pageSize,
-    });
+  async getFeeds(
+    userId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<PostRawInfoDto[]> {
+    await this.validatePagi(page, pageSize);
+    const posts = await this.postRepo
+      .createQueryBuilder('pe')
+      .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
+      .innerJoin(
+        FriendEntity,
+        'fe',
+        'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
+      )
+      .where(
+        '(pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend")',
+        {
+          userId: userId,
+        },
+      )
+      .select([
+        'pe.postId as postId',
+        'pe.secure as secure',
+        'pe.media as media',
+        'pe.createDate as createDate',
+        'pe.content as content',
+        'pe.user_userId as userId',
+        'ue.name as name',
+        'ue.profileImage as profileImage',
+        'ue.username as username',
+      ])
+      .orderBy('pe.createDate', 'DESC')
+      .offset(page)
+      .limit(pageSize)
+      .getRawMany();
     return posts;
   }
 
@@ -201,11 +266,10 @@ export class PostService {
     const posts = await this.postRepo
       .createQueryBuilder('post_entity')
       .where('post_entity.user_userId = :id', { id: String(userId) })
+      .orderBy('createDate', 'DESC')
       .take(pageSize)
       .skip((page - 1) * pageSize)
-      .orderBy('createDate', 'DESC')
       .getMany();
-    console.log(posts);
     return posts;
   }
 }

@@ -22,6 +22,7 @@ import { PostEditDto } from './dto/post.edit.dto';
 import { PostDeleteDto } from './dto/post.delete.dto';
 import { MessageDto } from '../user/dto/message.dto';
 import { PostPaginateDto } from './dto/post.paginate.dto';
+import { PostRawInfoDto } from './dto/post.raw.info.dto';
 
 export const storage = {
   storage: diskStorage({
@@ -42,9 +43,18 @@ export class PostController {
   constructor(private readonly postService: PostService) {}
 
   @UseGuards(JwtAuthGuard)
-  @Get('/feeds')
-  async getFeeds(@Request() req): Promise<PostEntity[]> {
-    const feeds = await this.postService.getFeeds(req.user.userId);
+  @Post('/feeds')
+  async getFeeds(
+    @Request() req,
+    @Body() postPaginate: PostPaginateDto,
+  ): Promise<PostRawInfoDto[]> {
+    const page = parseInt(String(postPaginate.page));
+    const pageSize = parseInt(String(postPaginate.pageSize));
+    const feeds = await this.postService.getFeeds(
+      req.user.userId,
+      page ? page : 1,
+      pageSize ? pageSize : 5,
+    );
     return feeds;
   }
 
@@ -56,7 +66,6 @@ export class PostController {
     @Request() req,
     @Body() postInfo: PostInfoDto,
   ): Promise<PostEntity> {
-    console.log(file);
     const imageName = file ? file.filename : '';
     const post = await this.postService.createPost(
       postInfo,
@@ -71,10 +80,10 @@ export class PostController {
   async getPostById(
     @Query('postId') postId,
     @Request() req,
-  ): Promise<PostEntity> {
-    return await this.postService.getPostByUser(
-      parseInt(postId),
+  ): Promise<PostRawInfoDto> {
+    return await this.postService.getRawPostById(
       req.user.userId,
+      parseInt(String(postId)),
     );
   }
 
@@ -106,12 +115,11 @@ export class PostController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('/get-all-post-of-user')
+  @Post('/get-all-post-of-user')
   async getAllPostOfUser(
     @Request() req,
     @Body() paginate: PostPaginateDto,
   ): Promise<PostEntity[]> {
-    // pagination page && pageSize
     return await this.postService.getAllPostOfUser(
       req.user.userId,
       paginate.page ? paginate.page : 1,
