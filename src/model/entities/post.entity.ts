@@ -4,9 +4,11 @@ import {
   CreateDateColumn,
   Entity,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { CommentEntity } from './comment.entity';
 import { UserEntity } from './user.entity';
 
 @Entity()
@@ -31,4 +33,7 @@ export class PostEntity {
 
   @ManyToOne(() => UserEntity, (user) => user.posts)
   user_: UserEntity;
+
+  @OneToMany(() => CommentEntity, (comment) => comment.post_)
+  comments: CommentEntity[];
 }

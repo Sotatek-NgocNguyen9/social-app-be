@@ -31,10 +31,7 @@ export class PostService {
     );
   }
 
-  async getRawPostById(
-    userId: number,
-    postId: number,
-  ): Promise<PostRawInfoDto> {
+  async validatePostId(postId: number) {
     if (postId < 0 || !postId) {
       throw new HttpException(
         {
@@ -44,16 +41,76 @@ export class PostService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    const post = await this.postRepo
+  }
+
+  async validateUserId(userId: number) {
+    if (userId < 0 || !userId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'INVALID_USERID_PAYLOAD',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async getAllRawPostByUserId(
+    userId: number,
+    friendId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<PostRawInfoDto[]> {
+    this.validateUserId(friendId);
+    this.validatePagi(page, pageSize);
+    const posts = await this.postRepo
       .createQueryBuilder('pe')
       .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
-      .innerJoin(
+      .leftJoin(
         FriendEntity,
         'fe',
         'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
       )
       .where(
-        '(pe.postId= :postId) AND (pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend")',
+        '(pe.user_userId = :friendId) AND ( (((fe.user_userId= :friendId AND fe.friend_userId= :userId) OR (fe.user_userId= :userId AND fe.friend_userId= :friendId)) AND (pe.secure="public" OR pe.secure="friend")) OR pe.secure="public")',
+        {
+          userId: userId,
+          friendId: friendId,
+        },
+      )
+      .select([
+        'pe.postId as postId',
+        'pe.secure as secure',
+        'pe.media as media',
+        'pe.createDate as createDate',
+        'pe.content as content',
+        'pe.user_userId as userId',
+        'ue.name as name',
+        'ue.profileImage as profileImage',
+        'ue.username as username',
+      ])
+      .orderBy('pe.createDate', 'DESC')
+      .offset((page - 1) * pageSize)
+      .limit(pageSize)
+      .getRawMany();
+    return posts;
+  }
+
+  async getRawPostById(
+    userId: number,
+    postId: number,
+  ): Promise<PostRawInfoDto> {
+    this.validatePostId(postId);
+    const post = await this.postRepo
+      .createQueryBuilder('pe')
+      .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
+      .leftJoin(
+        FriendEntity,
+        'fe',
+        'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
+      )
+      .where(
+        '(pe.postId = :postId) AND (((pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = userId) AND (pe.secure = "public" OR pe.secure="friend")) OR pe.secure="public")',
         {
           postId: postId,
           userId: userId,
@@ -86,6 +143,7 @@ export class PostService {
   }
 
   async getPostById(postId: number): Promise<PostEntity> {
+    this.validatePostId(postId);
     const post = await this.postRepo.findOne({
       where: {
         postId: postId,
@@ -149,13 +207,13 @@ export class PostService {
     const posts = await this.postRepo
       .createQueryBuilder('pe')
       .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
-      .innerJoin(
+      .leftJoin(
         FriendEntity,
         'fe',
         'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
       )
       .where(
-        '(pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend")',
+        'pe.secure="public" OR ((pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend")) ',
         {
           userId: userId,
         },
@@ -172,7 +230,7 @@ export class PostService {
         'ue.username as username',
       ])
       .orderBy('pe.createDate', 'DESC')
-      .offset(page)
+      .offset((page - 1) * pageSize)
       .limit(pageSize)
       .getRawMany();
     return posts;

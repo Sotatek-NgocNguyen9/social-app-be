@@ -1,1 +1,65 @@
-POST http://localhost:3000
+POST http://localhost:3000/auth/login
+content-type: application/json
+
+{
+    "username": "ieltsaddict@gmail.com",
+    "password": "tran44"
+}
+
+###
+POST http://localhost:3000/auth/logout
+
+###
+
+GET http://localhost:3000/user/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRxZmh1ZnkxZmZmNGQiLCJ1c2VySWQiOjgyLCJpYXQiOjE2NjAzMjA0MTQsImV4cCI6MTY2MDMyNDAxNH0.uhRWvbz6euXMyfgMUDTAP6rRFvVDXyYKAalP0jSz49k
+###
+POST http://localhost:3000/user/sign-up
+content-type: application/json
+
+{
+  "username": "ieltsaddict@gmail.com",
+  "password": "tran4811"
+}
+
+###
+POST http://localhost:3000/authentication/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRxaHV5MTQiLCJ1c2VySWQiOjcxLCJpYXQiOjE2NjAzMTk2MDQsImV4cCI6MTY2MDMyMzIwNH0.pViAd0hY8nJV5mMpoxQuxjH75WphipVWUkqRb6igOfs
+
+###
+POST http://localhost:3000/queue/send-test-email
+content-type: application/json
+
+{
+  "email": "ieltsaddict@gmail.com"
+}
+
+###
+POST http://localhost:3000/post/create-post
+content-type: application/json
+
+{
+  "username": "ieltsaddict@gmail.com",
+  "password": "tran"
+} 
+
+###
+GET http://localhost:3000/post/feeds
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImllbHRzYWRkaWN0QGdtYWlsLmNvbSIsInVzZXJJZCI6OTYsImlhdCI6MTY2MDU2NTM4MiwiZXhwIjoxNjYwNTY4OTgyfQ.v_9xKQM9BPicPqjcM7mJEJzMvmEXDZEZRC0Hq-ki2fw
+
+###
+POST http://localhost:3000/user/resend-confirm-email
+content-type: application/json
+
+{
+  "username": "this",
+  "userId": "123"
+}
+
+###
+POST https://localhost:3000/auth/forgot-password
+content-type: application/json
+
+{
+  "username": "thisis"
+}

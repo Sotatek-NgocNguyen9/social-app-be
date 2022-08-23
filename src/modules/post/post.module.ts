@@ -11,7 +11,7 @@ import { PostService } from './post.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([PostEntity, UserEntity, FriendEntity])],
-  exports: [],
+  exports: [PostService],
   controllers: [PostController],
   providers: [JwtService, JwtStrategy, PostService, PostRepository],
 })
