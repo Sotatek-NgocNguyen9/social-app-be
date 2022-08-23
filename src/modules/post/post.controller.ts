@@ -23,6 +23,7 @@ import { PostDeleteDto } from './dto/post.delete.dto';
 import { MessageDto } from '../user/dto/message.dto';
 import { PostPaginateDto } from './dto/post.paginate.dto';
 import { PostRawInfoDto } from './dto/post.raw.info.dto';
+import { PostGetAllByUserIdDto } from './dto/post.get-all-post-by-user-id.dto';
 
 export const storage = {
   storage: diskStorage({
@@ -124,6 +125,22 @@ export class PostController {
       req.user.userId,
       paginate.page ? paginate.page : 1,
       paginate.pageSize ? paginate.pageSize : 5,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('/get-all-post-by-user-id')
+  async getAllPostOfUserById(
+    @Request() req,
+    @Body() getAllPostByUserId: PostGetAllByUserIdDto,
+  ) {
+    const page = parseInt(String(getAllPostByUserId.page));
+    const pageSize = parseInt(String(getAllPostByUserId.pageSize));
+    return await this.postService.getAllRawPostByUserId(
+      req.user.userId,
+      getAllPostByUserId.userId,
+      page ? page : 1,
+      pageSize ? pageSize : 5,
     );
   }
 }

@@ -15,6 +15,8 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { CacheModule } from '@nestjs/common';
 import * as redisStore from 'cache-manager-redis-store';
 import { FriendModule } from './modules/friend/friend.module';
+import { CommentEntity } from './model/entities/comment.entity';
+import { CommentModule } from './modules/comment/comment.module';
 
 export const Modules = [
   TypeOrmModule.forRoot({
@@ -24,7 +26,13 @@ export const Modules = [
     username: process.env.MYSQL_USERNAME,
     password: process.env.MYSQL_PASSWORD,
     database: 'fresherk2',
-    entities: [FriendRequestEntity, FriendEntity, PostEntity, UserEntity],
+    entities: [
+      CommentEntity,
+      FriendRequestEntity,
+      FriendEntity,
+      PostEntity,
+      UserEntity,
+    ],
     synchronize: true,
   }),
   BullModule.forRoot({
@@ -58,4 +66,5 @@ export const Modules = [
   PhotoModule,
   PostModule,
   FriendModule,
+  CommentModule,
 ];

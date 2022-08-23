@@ -31,8 +31,14 @@ export class AuthenticationController {
   ): Promise<UserInfoDto> {
     const tokenAccess = await this.authenticationService.login(req.user);
     await this.authenticationService.createRefreshToken(tokenAccess, req.user);
-    response.cookie('access_token', tokenAccess.access_token);
-    return await this.authenticationService.getUserById(req.user.userId);
+    response.cookie('access_token', tokenAccess.access_token, {
+      httpOnly: true,
+      expires: new Date(Date.now() + 900000),
+      secure: true,
+      sameSite: 'none',
+    });
+    const user = await this.authenticationService.getUserById(req.user.userId);
+    return user;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -58,7 +64,12 @@ export class AuthenticationController {
     );
     const tokenAccess = await this.authenticationService.login(user);
     await this.authenticationService.createRefreshToken(tokenAccess, user);
-    response.cookie('access_token', tokenAccess.access_token);
+    response.cookie('access_token', tokenAccess.access_token, {
+      httpOnly: true,
+      expires: new Date(Date.now() + 900000),
+      secure: true,
+      sameSite: 'none',
+    });
     return user;
   }
 
@@ -80,7 +91,12 @@ export class AuthenticationController {
     );
     const tokenAccess = await this.authenticationService.login(user);
     await this.authenticationService.createRefreshToken(tokenAccess, user);
-    response.cookie('access_token', tokenAccess.access_token);
+    response.cookie('access_token', tokenAccess.access_token, {
+      httpOnly: true,
+      expires: new Date(Date.now() + 900000),
+      secure: true,
+      sameSite: 'none',
+    });
     return user;
   }
 
@@ -94,7 +110,9 @@ export class AuthenticationController {
         await this.authenticationService.createAccessToken(
           String(req.cookies['access_token']),
         );
-      response.cookie('access_token', new_access_token.access_token);
+      response.cookie('access_token', new_access_token.access_token, {
+        httpOnly: true,
+      });
       return { message: 'SUCESS_GENERATE_NEW_ACCESS_TOKEN' };
     } else {
       throw new UnauthorizedException();

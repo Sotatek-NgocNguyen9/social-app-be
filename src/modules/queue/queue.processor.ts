@@ -24,13 +24,20 @@ export class QueueEmailProcessor {
       confirmUrl: `${process.env.FRONTEND_BASE_URL}auth/sign-up/?linkType=sign-up&secretToken=${secretToken}`,
       username: jobData.data.username,
     };
-    await this.mailerService.sendMail({
-      to: jobData.data.username,
-      from: String(process.env.HOST_EMAIL),
-      subject: 'Welcome new user',
-      template: './email-confirm.hbs',
-      context: { CFpayload: CFpayload },
-    });
+    await this.mailerService
+      .sendMail({
+        to: jobData.data.username,
+        from: String(process.env.HOST_EMAIL),
+        subject: 'Welcome new user',
+        template: './email-confirm.hbs',
+        context: { CFpayload: CFpayload },
+      })
+      .then((data) => {
+        console.log(data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
     return;
   }
 }

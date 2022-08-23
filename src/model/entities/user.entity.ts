@@ -1,9 +1,10 @@
 /* eslint-disable prettier/prettier */
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn  } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { PostEntity } from './post.entity';
 import { FriendEntity } from './friend.entity';
 import { FriendRequestEntity } from './friend-request.entity';
+import { CommentEntity } from './comment.entity';
 
 @Entity()
 export class UserEntity {
@@ -43,7 +44,7 @@ export class UserEntity {
   @Exclude()
   public currentHashedRefreshToken?: string;
 
-  @OneToMany((type) => PostEntity, (post) => post.user_)
+  @OneToMany(() => PostEntity, (post) => post.user_)
   posts: PostEntity[];
 
   @OneToMany(() => FriendEntity, (friend) => friend.user_)
@@ -57,4 +58,7 @@ export class UserEntity {
   
   @OneToMany(() => FriendRequestEntity, (friendReq) => friendReq.requester_)
   requester: FriendRequestEntity[];
+
+  @OneToMany(() => CommentEntity, (comment) => comment.user_)
+  comments: CommentEntity[];
 }
