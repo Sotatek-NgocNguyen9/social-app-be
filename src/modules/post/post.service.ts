@@ -1,8 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CommentEntity } from 'src/model/entities/comment.entity';
 import { FriendEntity } from 'src/model/entities/friend.entity';
 import { PostEntity } from 'src/model/entities/post.entity';
 import { UserEntity } from 'src/model/entities/user.entity';
+import { CommentRepository } from 'src/model/repositories/comment.repositoty';
 import { FriendRepository } from 'src/model/repositories/friend.repository';
 import { PostRepository } from 'src/model/repositories/post.repository';
 import { UserRepository } from 'src/model/repositories/user.repository';
@@ -16,6 +18,7 @@ export class PostService {
     @InjectRepository(PostEntity) private postRepo: PostRepository,
     @InjectRepository(UserEntity) private userRepo: UserRepository,
     @InjectRepository(FriendEntity) private friendRepo: FriendRepository,
+    @InjectRepository(CommentEntity) private commentRepo: CommentRepository,
   ) {}
 
   async validatePagi(page: number, pageSize: number): Promise<void> {
@@ -110,7 +113,7 @@ export class PostService {
         'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
       )
       .where(
-        '(pe.postId = :postId) AND (((pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = userId) AND (pe.secure = "public" OR pe.secure="friend")) OR pe.secure="public")',
+        '(pe.user_userId= :userId) OR ((pe.postId = :postId) AND (((pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = userId) AND (pe.secure = "public" OR pe.secure="friend")) OR pe.secure="public"))',
         {
           postId: postId,
           userId: userId,
@@ -213,7 +216,7 @@ export class PostService {
         'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
       )
       .where(
-        'pe.secure="public" OR ((pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend")) ',
+        '(pe.secure="public") OR (pe.user_userId = :userId) OR ((pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend"))',
         {
           userId: userId,
         },
@@ -229,7 +232,7 @@ export class PostService {
         'ue.profileImage as profileImage',
         'ue.username as username',
       ])
-      .orderBy('pe.createDate', 'DESC')
+      .orderBy('pe.updateDate', 'DESC')
       .offset((page - 1) * pageSize)
       .limit(pageSize)
       .getRawMany();
@@ -292,18 +295,36 @@ export class PostService {
   }
 
   async deletePost(postId: number, userId: number): Promise<void> {
-    const post = await this.getPostById(postId);
-    if (userId !== post.user_.userId) {
+    const post = await this.postRepo
+      .createQueryBuilder()
+      .where('postId = :postId && user_userId = :userId', {
+        postId: postId,
+        userId: userId,
+      })
+      .getOne();
+    if (!post) {
       throw new HttpException(
         {
-          status: HttpStatus.UNAUTHORIZED,
-          error: 'CANOT_DELETE_THIS_POST',
+          status: HttpStatus.BAD_REQUEST,
+          error: 'NOT_FOUND_POST_DELETE',
         },
-        HttpStatus.UNAUTHORIZED,
+        HttpStatus.BAD_REQUEST,
       );
     }
     try {
-      await this.postRepo.remove(post);
+      // remove all comment of post
+      await this.commentRepo
+        .createQueryBuilder()
+        .delete()
+        .from(CommentEntity)
+        .where('post_postId = :postId', { postId: postId })
+        .execute();
+      await this.postRepo
+        .createQueryBuilder()
+        .delete()
+        .from(PostEntity)
+        .where('postId = :postId', { postId: postId })
+        .execute();
     } catch (err) {
       throw new HttpException(
         {

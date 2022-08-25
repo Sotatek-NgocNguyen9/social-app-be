@@ -88,4 +88,10 @@ export class UserController {
     const user = this.userService.resetPassword(req.user.userId, passwordOb);
     return user;
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('/get-new-users')
+  async getNewUser(@Request() req, @Body() getNewUserDto): Promise<any> {
+    return getNewUserDto;
+  }
 }

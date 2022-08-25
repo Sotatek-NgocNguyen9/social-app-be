@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CommentEntity } from 'src/model/entities/comment.entity';
 import { FriendEntity } from 'src/model/entities/friend.entity';
 import { PostEntity } from 'src/model/entities/post.entity';
 import { UserEntity } from 'src/model/entities/user.entity';
@@ -10,7 +11,14 @@ import { PostController } from './post.controller';
 import { PostService } from './post.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PostEntity, UserEntity, FriendEntity])],
+  imports: [
+    TypeOrmModule.forFeature([
+      PostEntity,
+      UserEntity,
+      FriendEntity,
+      CommentEntity,
+    ]),
+  ],
   exports: [PostService],
   controllers: [PostController],
   providers: [JwtService, JwtStrategy, PostService, PostRepository],
