@@ -37,3 +37,4 @@ lerna-debug.log*
 # custome
 .env
 .http
+uploads/
