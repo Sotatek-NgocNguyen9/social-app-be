@@ -17,6 +17,7 @@ import { HttpService } from '@nestjs/axios';
 import { ForgotPasswordDto } from './dto/forgot-password';
 import { EmailConfirmDto } from '../queue/dto/email-confim.dto';
 import { MessageDto } from '../user/dto/message.dto';
+import { CreateTokenDto } from './dto/auth.create-token.dto';
 
 @Injectable()
 export class AuthenticationService {
@@ -172,7 +173,7 @@ export class AuthenticationService {
     await this.cacheManager.del(access_token);
   }
 
-  async createAccessToken(expireAccToken: string): Promise<AccessTokenDto> {
+  async createAccessToken(expireAccToken: string): Promise<CreateTokenDto> {
     const refresh_token = await this.cacheManager.get(expireAccToken);
     if (refresh_token) {
       const payload = this.jwtService.decode(String(refresh_token));
@@ -182,8 +183,9 @@ export class AuthenticationService {
         secret: String(process.env.JWT_ACCESS_TOKEN_SECRET),
         expiresIn: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRATION_TIME),
       });
+      const user = await this.getUserById(payloadAcc.userId);
       await this.cacheManager.set(access_token, refresh_token);
-      return { access_token: access_token };
+      return { access_token: access_token, user: user };
     } else {
       throw new UnauthorizedException();
     }

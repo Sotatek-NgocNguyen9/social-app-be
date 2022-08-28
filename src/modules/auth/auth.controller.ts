@@ -104,19 +104,18 @@ export class AuthenticationController {
   async getAccessToken(
     @Request() req,
     @Res({ passthrough: true }) response,
-  ): Promise<MessageDto> {
+  ): Promise<UserInfoDto> {
     if (req.cookies['access_token']) {
-      const new_access_token =
-        await this.authenticationService.createAccessToken(
-          String(req.cookies['access_token']),
-        );
-      response.cookie('access_token', new_access_token.access_token, {
+      const createToken = await this.authenticationService.createAccessToken(
+        String(req.cookies['access_token']),
+      );
+      response.cookie('access_token', createToken.access_token, {
         httpOnly: true,
         expires: new Date(Date.now() + 900000),
         secure: true,
         sameSite: 'none',
       });
-      return { message: 'SUCESS_GENERATE_NEW_ACCESS_TOKEN' };
+      return createToken.user;
     } else {
       throw new UnauthorizedException();
     }
