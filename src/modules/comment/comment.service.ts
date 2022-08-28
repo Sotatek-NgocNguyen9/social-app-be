@@ -31,17 +31,17 @@ export class CommentService {
     );
   }
 
-  async validatePagi(page: number, pageSize: number): Promise<void> {
-    if (page > 0 && pageSize > 0) {
-      return;
+  validatePagi(page: number, pageSize: number) {
+    if (page < 0 || pageSize < 0 || !page || !pageSize) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'INVALID_PAGE_OR_PAGESIZE',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
     }
-    throw new HttpException(
-      {
-        status: HttpStatus.BAD_REQUEST,
-        error: 'INVALID_PAGE_OR_PAGESIZE',
-      },
-      HttpStatus.BAD_REQUEST,
-    );
+    return;
   }
 
   async getCommentOfPost(
@@ -50,7 +50,6 @@ export class CommentService {
     page: number,
     pageSize: number,
   ): Promise<CommentRawInfoDto[]> {
-    console.log(page, pageSize);
     this.validatePagi(page, pageSize);
     await this.postService.getRawPostById(userId, postId);
     const comments = await this.userRepo
@@ -72,7 +71,6 @@ export class CommentService {
       .offset((page - 1) * pageSize)
       .limit(pageSize)
       .getRawMany();
-    console.log(comments);
     return comments;
   }
 

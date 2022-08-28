@@ -24,6 +24,7 @@ import { MessageDto } from '../user/dto/message.dto';
 import { PostPaginateDto } from './dto/post.paginate.dto';
 import { PostRawInfoDto } from './dto/post.raw.info.dto';
 import { PostGetAllByUserIdDto } from './dto/post.get-all-post-by-user-id.dto';
+import { PostSearchDto } from './dto/post.search';
 
 export const storage = {
   storage: diskStorage({
@@ -136,9 +137,23 @@ export class PostController {
   ) {
     const page = parseInt(String(getAllPostByUserId.page));
     const pageSize = parseInt(String(getAllPostByUserId.pageSize));
+    const userId = parseInt(String(getAllPostByUserId.userId));
     return await this.postService.getAllRawPostByUserId(
       req.user.userId,
-      getAllPostByUserId.userId,
+      userId,
+      page ? page : 1,
+      pageSize ? pageSize : 5,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('/search-post')
+  async searchAll(@Request() req, @Body() postSearch: PostSearchDto) {
+    const page = parseInt(String(postSearch.page));
+    const pageSize = parseInt(String(postSearch.pageSize));
+    return await this.postService.fullTextSearchPost(
+      req.user.userId,
+      postSearch.searchQuery,
       page ? page : 1,
       pageSize ? pageSize : 5,
     );

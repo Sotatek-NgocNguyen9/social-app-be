@@ -11,12 +11,13 @@ import { UserEntity } from '../../model/entities/user.entity';
 import { UserService } from '../user/user.service';
 import { JwtStrategy } from './strategy/jwt.strategy';
 import { HttpModule } from '@nestjs/axios';
+import { FriendEntity } from 'src/model/entities/friend.entity';
 
 @Module({
   imports: [
     UserModule,
     PassportModule,
-    TypeOrmModule.forFeature([UserEntity]),
+    TypeOrmModule.forFeature([UserEntity, FriendEntity]),
     HttpModule,
   ],
   providers: [

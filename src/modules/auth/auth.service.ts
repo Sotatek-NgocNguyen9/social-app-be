@@ -27,7 +27,6 @@ export class AuthenticationService {
     private readonly httpService: HttpService,
   ) {}
 
-  // kieu tra ve
   async validateUserCredential(
     username: string,
     password: string,
