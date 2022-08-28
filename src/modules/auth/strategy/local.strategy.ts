@@ -4,7 +4,6 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
-  Request,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';

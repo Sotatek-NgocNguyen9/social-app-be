@@ -93,6 +93,49 @@ export class UserService {
     }
   }
 
+  validateUpdateUser(userInfoUpdate: UserInfoUpdateDto) {
+    if (userInfoUpdate.name?.length > 100) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'NAME_TOO_LENGTH',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (userInfoUpdate.location?.length > 100) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'LOCATION_TOO_LENGTH',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (userInfoUpdate.bio?.length > 100) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'BIO_TOO_LENGTH',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (
+      userInfoUpdate.linkedin?.length > 100 ||
+      userInfoUpdate.facebook?.length > 100 ||
+      userInfoUpdate.instagram?.length > 100
+    ) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'SOCIAL_TOO_LENGTH',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   async getUserById(userId: number): Promise<UserInfoDto> {
     const user = await this.userRepo.findOne({
       where: {
@@ -282,6 +325,7 @@ export class UserService {
     userInfoUpdate: UserInfoUpdateDto,
     imageName: string,
   ): Promise<UserInfoDto> {
+    this.validateUpdateUser(userInfoUpdate);
     const user = await this.getUserUpdateById(userId);
     user.bio = userInfoUpdate.bio;
     user.name = userInfoUpdate.name;

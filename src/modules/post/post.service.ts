@@ -174,6 +174,15 @@ export class PostService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    if (content?.length > 250) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'CONTENT_TOO_LONG',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     return;
   }
 
@@ -248,7 +257,7 @@ export class PostService {
   }
 
   validateContent(content: string) {
-    if (content.length > 200) {
+    if (content?.length > 250) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
@@ -358,6 +367,7 @@ export class PostService {
     page: number,
     pageSize: number,
   ): Promise<PostRawInfoDto[]> {
+    console.log(searchQuery);
     if (!searchQuery) {
       throw new HttpException(
         {
@@ -368,6 +378,16 @@ export class PostService {
       );
     }
     this.validatePagi(page, pageSize);
+
+    const condition = `
+          ((pe.secure="public") OR (pe.user_userId = ${userId}) OR ((pe.user_userId = ${userId} OR fe.user_userId = ${userId} OR fe.friend_userId = ${userId}) AND (pe.secure = "public" OR pe.secure = "friend")))
+          AND (
+            MATCH(pe.content) AGAINST ('${searchQuery}' IN BOOLEAN MODE) 
+            OR MATCH(ue.name) AGAINST ('${searchQuery}' IN BOOLEAN MODE) 
+            OR MATCH(ue.location) AGAINST ('${searchQuery}' IN BOOLEAN MODE) 
+            OR MATCH(ue.bio) AGAINST ('${searchQuery}' IN BOOLEAN MODE)
+          )
+        `;
     const posts = await this.postRepo
       .createQueryBuilder('pe')
       .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
@@ -376,16 +396,7 @@ export class PostService {
         'fe',
         'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
       )
-      .where(
-        '(pe.secure="public") OR (pe.user_userId = :userId) OR ((pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend"))',
-        {
-          userId: userId,
-        },
-      )
-      .where(`MATCH(pe.content) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
-      .orWhere(`MATCH(ue.name) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
-      .orWhere(`MATCH(ue.location) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
-      .orWhere(`MATCH(ue.bio) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
+      .where(condition)
       .select([
         'pe.postId as postId',
         'pe.secure as secure',
@@ -398,9 +409,10 @@ export class PostService {
         'ue.username as username',
       ])
       .orderBy('pe.updateDate', 'DESC')
-      .take(pageSize)
-      .skip((page - 1) * pageSize)
+      .offset((page - 1) * pageSize)
+      .limit(pageSize)
       .getRawMany();
+    console.log(posts);
     return posts;
   }
 }
