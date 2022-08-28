@@ -1,11 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CommentEntity } from 'src/model/entities/comment.entity';
-import { PostEntity } from 'src/model/entities/post.entity';
-import { UserEntity } from 'src/model/entities/user.entity';
-import { CommentRepository } from 'src/model/repositories/comment.repositoty';
-import { PostRepository } from 'src/model/repositories/post.repository';
-import { UserRepository } from 'src/model/repositories/user.repository';
+import { CommentEntity } from '../../model/entities/comment.entity';
+import { PostEntity } from '../../model/entities/post.entity';
+import { UserEntity } from '../../model/entities/user.entity';
+import { CommentRepository } from '../../model/repositories/comment.repositoty';
+import { PostRepository } from '../../model/repositories/post.repository';
+import { UserRepository } from '../../model/repositories/user.repository';
 import { PostService } from '../post/post.service';
 import { CommentRawInfoDto } from './dto/comment.raw.info.dto';
 

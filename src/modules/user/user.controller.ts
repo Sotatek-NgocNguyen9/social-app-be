@@ -10,7 +10,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { UserService } from 'src/modules/user/user.service';
+import { UserService } from './user.service';
 import { UserAccountDto } from '../auth/dto/user-account.dto';
 import { AuthenticationService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';

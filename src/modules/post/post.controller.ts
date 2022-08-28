@@ -17,7 +17,7 @@ import { diskStorage } from 'multer';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { PostInfoDto } from './dto/post.info.dto';
-import { PostEntity } from 'src/model/entities/post.entity';
+import { PostEntity } from '../../model/entities/post.entity';
 import { PostEditDto } from './dto/post.edit.dto';
 import { PostDeleteDto } from './dto/post.delete.dto';
 import { MessageDto } from '../user/dto/message.dto';

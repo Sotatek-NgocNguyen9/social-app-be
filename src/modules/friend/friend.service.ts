@@ -1,14 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { FriendEntity } from 'src/model/entities/friend.entity';
-import { FriendRepository } from 'src/model/repositories/friend.repository';
+import { FriendEntity } from '../../model/entities/friend.entity';
+import { FriendRepository } from '../../model/repositories/friend.repository';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FriendRequestEntity } from 'src/model/entities/friend-request.entity';
-import { FriendRequestRepository } from 'src/model/repositories/friend-request.repository';
+import { FriendRequestEntity } from '../../model/entities/friend-request.entity';
+import { FriendRequestRepository } from '../../model/repositories/friend-request.repository';
 import { UserService } from '../user/user.service';
 import { FriendSendReqDto } from './dto/friend.sendReq.dto';
 import { FriendAcceptDto } from './dto/friend.accept.dto';
-import { UserEntity } from 'src/model/entities/user.entity';
-import { UserRepository } from 'src/model/repositories/user.repository';
+import { UserEntity } from '../../model/entities/user.entity';
+import { UserRepository } from '../../model/repositories/user.repository';
 import { FriendDeleteRequestDto } from './dto/friend.deleteReq.dto';
 import { FriendExploreDto } from './dto/friend.explore.dto';
 
