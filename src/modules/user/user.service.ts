@@ -13,10 +13,10 @@ import { MessageDto } from './dto/message.dto';
 import { UserEmailConfirmDto } from './dto/user-email-confirm.dto';
 import { EmailConfirmDto } from '../queue/dto/email-confim.dto';
 import { PasswordDto } from './dto/password.dto';
-import { FriendEntity } from 'src/model/entities/friend.entity';
-import { FriendRepository } from 'src/model/repositories/friend.repository';
+import { FriendEntity } from '../../model/entities/friend.entity';
+import { FriendRepository } from '../../model/repositories/friend.repository';
 import { UserSearchRawDto } from './dto/user.serach.raw.dto';
-import { FriendRequestEntity } from 'src/model/entities/friend-request.entity';
+import { FriendRequestEntity } from '../../model/entities/friend-request.entity';
 import { UserRawInfoDto } from './dto/user.raw.info.dto';
 
 @Injectable()

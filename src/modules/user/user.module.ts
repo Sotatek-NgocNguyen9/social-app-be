@@ -8,7 +8,7 @@ import { AuthenticationService } from '../auth/auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { JwtStrategy } from '../auth/strategy/jwt.strategy';
 import { HttpModule } from '@nestjs/axios';
-import { FriendEntity } from 'src/model/entities/friend.entity';
+import { FriendEntity } from '../../model/entities/friend.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity, FriendEntity]), HttpModule],
