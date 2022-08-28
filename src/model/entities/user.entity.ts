@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn  } from 'typeorm';
+import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn  } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { PostEntity } from './post.entity';
 import { FriendEntity } from './friend.entity';
@@ -11,16 +11,19 @@ export class UserEntity {
   @PrimaryGeneratedColumn()
   userId: number;
 
-  @Column()
+  @Index({ fulltext: true })
+  @Column('varchar')
   name: string;
 
   @Column({ unique: true })
   username: string;
 
-  @Column()
+  @Index({ fulltext: true })
+  @Column('varchar')
   location: string;
 
-  @Column()
+  @Index({ fulltext: true })
+  @Column('text')
   bio: string;
 
   @Column()

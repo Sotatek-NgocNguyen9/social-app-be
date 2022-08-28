@@ -5,6 +5,7 @@ import { MessageDto } from '../user/dto/message.dto';
 import { UserInfoDto } from '../user/dto/user-info.dto';
 import { FriendAcceptDto } from './dto/friend.accept.dto';
 import { FriendDeleteRequestDto } from './dto/friend.deleteReq.dto';
+import { FriendExploreDto } from './dto/friend.explore.dto';
 import { FriendPaginateDto } from './dto/friend.paginate.dto';
 import { FriendSendReqDto } from './dto/friend.sendReq.dto';
 import { FriendService } from './friend.service';
@@ -82,5 +83,21 @@ export class FriendController {
       pageSize ? pageSize : 5,
     );
     return friends;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/explore-people')
+  async getExplorePeople(
+    @Request() req,
+    @Body() friendPaginate: FriendPaginateDto,
+  ): Promise<FriendExploreDto[]> {
+    const page = parseInt(String(friendPaginate.page));
+    const pageSize = parseInt(String(friendPaginate.pageSize));
+    const people = await this.friendService.explorePeople(
+      req.user.userId,
+      page ? page : 1,
+      pageSize ? pageSize : 5,
+    );
+    return people;
   }
 }

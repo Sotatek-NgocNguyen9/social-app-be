@@ -20,6 +20,8 @@ import { SharpPipe } from './sharp-pipe';
 import { MessageDto } from './dto/message.dto';
 import { UserEmailConfirmDto } from './dto/user-email-confirm.dto';
 import { PasswordDto } from './dto/password.dto';
+import { UserSearchDto } from './dto/user.search.dto';
+import { UserRawInfoDto } from './dto/user.raw.info.dto';
 
 @Controller('user')
 export class UserController {
@@ -37,8 +39,12 @@ export class UserController {
 
   @UseGuards(JwtAuthGuard)
   @Get('/get-user-by-id/')
-  async getPostById(@Query('userId') userId): Promise<UserInfoDto> {
-    return await this.userService.getUserById(userId);
+  async getUserById(
+    @Request() req,
+    @Query('userId') userId: number,
+  ): Promise<UserRawInfoDto> {
+    const strangerId = parseInt(String(userId));
+    return await this.userService.getRawUserById(req.user.userId, strangerId);
   }
 
   @Post('/sign-up')
@@ -90,8 +96,15 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('/get-new-users')
-  async getNewUser(@Request() req, @Body() getNewUserDto): Promise<any> {
-    return getNewUserDto;
+  @Post('/search-user')
+  async searchPeople(@Request() req, @Body() userSearch: UserSearchDto) {
+    const page = parseInt(String(userSearch.page));
+    const pageSize = parseInt(String(userSearch.pageSize));
+    return this.userService.fullTextSearchPeople(
+      req.user.userId,
+      userSearch.searchQuery,
+      page,
+      pageSize,
+    );
   }
 }

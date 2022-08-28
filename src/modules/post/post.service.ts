@@ -21,20 +21,20 @@ export class PostService {
     @InjectRepository(CommentEntity) private commentRepo: CommentRepository,
   ) {}
 
-  async validatePagi(page: number, pageSize: number): Promise<void> {
-    if (page > 0 && pageSize > 0) {
-      return;
+  validatePagi(page: number, pageSize: number) {
+    if (page < 0 || pageSize < 0 || !page || !pageSize) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'INVALID_PAGE_OR_PAGESIZE',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
     }
-    throw new HttpException(
-      {
-        status: HttpStatus.BAD_REQUEST,
-        error: 'INVALID_PAGE_OR_PAGESIZE',
-      },
-      HttpStatus.BAD_REQUEST,
-    );
+    return;
   }
 
-  async validatePostId(postId: number) {
+  validatePostId(postId: number) {
     if (postId < 0 || !postId) {
       throw new HttpException(
         {
@@ -44,9 +44,10 @@ export class PostService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    return;
   }
 
-  async validateUserId(userId: number) {
+  validateUserId(userId: number) {
     if (userId < 0 || !userId) {
       throw new HttpException(
         {
@@ -56,6 +57,7 @@ export class PostService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    return;
   }
 
   async getAllRawPostByUserId(
@@ -66,6 +68,10 @@ export class PostService {
   ): Promise<PostRawInfoDto[]> {
     this.validateUserId(friendId);
     this.validatePagi(page, pageSize);
+    let condition = `(pe.user_userId = ${friendId}) AND ((((fe.user_userId= ${friendId} AND fe.friend_userId= ${userId}) OR (fe.user_userId= ${userId} AND fe.friend_userId= ${friendId})) AND (pe.secure="public" OR pe.secure="friend")) OR pe.secure="public")`;
+    if (userId === friendId) {
+      condition = `(pe.user_userId = ${userId})`;
+    }
     const posts = await this.postRepo
       .createQueryBuilder('pe')
       .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
@@ -74,13 +80,7 @@ export class PostService {
         'fe',
         'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
       )
-      .where(
-        '(pe.user_userId = :friendId) AND ( (((fe.user_userId= :friendId AND fe.friend_userId= :userId) OR (fe.user_userId= :userId AND fe.friend_userId= :friendId)) AND (pe.secure="public" OR pe.secure="friend")) OR pe.secure="public")',
-        {
-          userId: userId,
-          friendId: friendId,
-        },
-      )
+      .where(condition)
       .select([
         'pe.postId as postId',
         'pe.secure as secure',
@@ -206,7 +206,7 @@ export class PostService {
     page: number,
     pageSize: number,
   ): Promise<PostRawInfoDto[]> {
-    await this.validatePagi(page, pageSize);
+    this.validatePagi(page, pageSize);
     const posts = await this.postRepo
       .createQueryBuilder('pe')
       .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
@@ -349,6 +349,58 @@ export class PostService {
       .take(pageSize)
       .skip((page - 1) * pageSize)
       .getMany();
+    return posts;
+  }
+
+  async fullTextSearchPost(
+    userId: number,
+    searchQuery: string,
+    page: number,
+    pageSize: number,
+  ): Promise<PostRawInfoDto[]> {
+    if (!searchQuery) {
+      throw new HttpException(
+        {
+          status: HttpStatus.UNAUTHORIZED,
+          error: 'EMPTY_SEARCH_QUERY_PAYLOAD',
+        },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+    this.validatePagi(page, pageSize);
+    const posts = await this.postRepo
+      .createQueryBuilder('pe')
+      .innerJoin(UserEntity, 'ue', 'pe.user_userId = ue.userId')
+      .leftJoin(
+        FriendEntity,
+        'fe',
+        'fe.user_userId = ue.userId OR fe.friend_userId = ue.userId',
+      )
+      .where(
+        '(pe.secure="public") OR (pe.user_userId = :userId) OR ((pe.user_userId = :userId OR fe.user_userId = :userId OR fe.friend_userId = :userId) AND (pe.secure = "public" OR pe.secure = "friend"))',
+        {
+          userId: userId,
+        },
+      )
+      .where(`MATCH(pe.content) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
+      .orWhere(`MATCH(ue.name) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
+      .orWhere(`MATCH(ue.location) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
+      .orWhere(`MATCH(ue.bio) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
+      .select([
+        'pe.postId as postId',
+        'pe.secure as secure',
+        'pe.media as media',
+        'pe.createDate as createDate',
+        'pe.content as content',
+        'pe.user_userId as userId',
+        'ue.name as name',
+        'ue.profileImage as profileImage',
+        'ue.username as username',
+      ])
+      .orderBy('pe.updateDate', 'DESC')
+      .take(pageSize)
+      .skip((page - 1) * pageSize)
+      .getRawMany();
     return posts;
   }
 }

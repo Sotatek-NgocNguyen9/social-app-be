@@ -10,6 +10,7 @@ import { FriendAcceptDto } from './dto/friend.accept.dto';
 import { UserEntity } from 'src/model/entities/user.entity';
 import { UserRepository } from 'src/model/repositories/user.repository';
 import { FriendDeleteRequestDto } from './dto/friend.deleteReq.dto';
+import { FriendExploreDto } from './dto/friend.explore.dto';
 
 @Injectable()
 export class FriendService {
@@ -21,17 +22,17 @@ export class FriendService {
     private readonly userService: UserService,
   ) {}
 
-  async validatePagi(page: number, pageSize: number): Promise<void> {
-    if (page > 0 && pageSize > 0) {
-      return;
+  validatePagi(page: number, pageSize: number) {
+    if (page < 0 || pageSize < 0 || !page || !pageSize) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'INVALID_PAGE_OR_PAGESIZE',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
     }
-    throw new HttpException(
-      {
-        status: HttpStatus.BAD_REQUEST,
-        error: 'INVALID_PAGE_OR_PAGESIZE',
-      },
-      HttpStatus.BAD_REQUEST,
-    );
+    return;
   }
 
   async checkRequest(userId: number, strangerId: number): Promise<boolean> {
@@ -264,5 +265,50 @@ export class FriendService {
       .skip((page - 1) * pageSize)
       .getMany();
     return friends;
+  }
+
+  async explorePeople(
+    userId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<FriendExploreDto[]> {
+    this.validatePagi(page, pageSize);
+    const firstJoin = `(ue.userId = fe.user_userId OR ue.userId = fe.friend_userId) AND (fe.user_userId != ${userId} AND fe.friend_userId != ${userId})`;
+    const secondJoin = `(fe2.user_userId = fe.user_userId OR fe2.user_userId = fe.friend_userId OR fe2.friend_userId = fe.friend_userId OR fe2.friend_userId = fe.user_userId) AND (fe2.user_userId = ${userId} OR fe2.friend_userId = ${userId}) 
+                          AND NOT((ue.userId = fe.user_userId AND ue.userId = fe2.user_userId) OR (ue.userId = fe.friend_userId AND ue.userId = fe2.friend_userId) OR (ue.userId = fe.user_userId AND ue.userId = fe2.friend_userId) OR (ue.userId = fe.friend_userId AND ue.userId = fe2.user_userId))`;
+    const condition = `(NOT EXISTS (SELECT fe3.user_userId, fe3.friend_userId FROM friend_entity fe3 
+                            WHERE (
+                                (fe3.user_userId = ${userId} AND fe3.user_userId = ue.userId) OR (fe3.friend_userId = ue.userId AND fe3.user_userId = ${userId}) OR
+                                (fe3.friend_userId = ${userId} AND fe3.user_userId = ue.userId) OR (fe3.friend_userId = ue.userId AND fe3.friend_userId = ${userId})
+                            )
+                          )
+                        )
+                        AND (ue.userId != ${userId})
+                        AND (NOT EXISTS (SELECT fre.user_userId, fre.requester_userId FROM friend_request_entity fre
+                          WHERE(
+                             (fre.user_userId = ${userId} AND fre.user_userId = ue.userId) OR (fre.requester_userId = ue.userId AND fre.user_userId = ${userId}) OR
+                             (fre.requester_userId = ${userId} AND fre.user_userId = ue.userId) OR (fre.requester_userId = ue.userId AND fre.requester_userId = ${userId})
+                              )            
+                       )
+                  )`;
+    const peoples = await this.userRepo
+      .createQueryBuilder('ue')
+      .leftJoin(FriendEntity, 'fe', firstJoin)
+      .leftJoin(FriendEntity, 'fe2', secondJoin)
+      .where(condition)
+      .select([
+        'COUNT(fe2.user_userId) as mutualFriend',
+        'ue.userId as userId',
+        'ue.name as name',
+        'ue.username as username',
+        'ue.profileImage as profileImage',
+        'ue.location as location',
+      ])
+      .groupBy('ue.userId')
+      .orderBy('mutualFriend', 'DESC')
+      .offset((page - 1) * pageSize)
+      .limit(pageSize)
+      .getRawMany();
+    return peoples;
   }
 }

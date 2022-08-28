@@ -13,13 +13,31 @@ import { MessageDto } from './dto/message.dto';
 import { UserEmailConfirmDto } from './dto/user-email-confirm.dto';
 import { EmailConfirmDto } from '../queue/dto/email-confim.dto';
 import { PasswordDto } from './dto/password.dto';
+import { FriendEntity } from 'src/model/entities/friend.entity';
+import { FriendRepository } from 'src/model/repositories/friend.repository';
+import { UserSearchRawDto } from './dto/user.serach.raw.dto';
+import { FriendRequestEntity } from 'src/model/entities/friend-request.entity';
+import { UserRawInfoDto } from './dto/user.raw.info.dto';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(UserEntity) private userRepo: UserRepository,
+    @InjectRepository(FriendEntity) private friendRepo: FriendRepository,
     private readonly httpService: HttpService,
   ) {}
+
+  validatePagi(page: number, pageSize: number) {
+    if (page < 0 || pageSize < 0 || !page || !pageSize) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'INVALID_PAGE_OR_PAGESIZE',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 
   validateEmail(email: string) {
     if (!email) {
@@ -92,6 +110,69 @@ export class UserService {
     }
     const { password, ...data } = user;
     return data;
+  }
+
+  async getRawUserById(
+    userId: number,
+    strangerId: number,
+  ): Promise<UserRawInfoDto> {
+    if (!strangerId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'EMPTY_USERID_PAYLOAD',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const firstJoin = `(ue.userId = fe.user_userId OR ue.userId = fe.friend_userId) 
+      AND ((fe.user_userId = ${userId} AND fe.friend_userId = ${strangerId}) OR (fe.friend_userId = ${userId} AND fe.user_userId = ${strangerId}))`;
+    const secondJoin = `(ue.userId = fre.user_userId OR ue.userId = fre.requester_userId)
+    AND ((fre.user_userId = ${userId} AND fre.requester_userId = ${strangerId}) OR (fre.requester_userId = ${userId} AND fre.user_userId = ${strangerId}))`;
+    const user = await this.userRepo
+      .createQueryBuilder('ue')
+      .leftJoin(FriendEntity, 'fe', firstJoin)
+      .leftJoin(FriendRequestEntity, 'fre', secondJoin)
+      .where(`ue.userId = ${strangerId}`)
+      .select([
+        'ue.userId as userId',
+        'ue.name as name',
+        'ue.username as username',
+        'ue.location as location',
+        'ue.bio as bio',
+        'ue.facebook as facebook',
+        'ue.instagram as instagram',
+        'ue.linkedin as linkedin',
+        'ue.profileImage as profileImage',
+        'ue.isActivate as isActivate',
+        'fe.user_userId as friendId1',
+        'fe.friend_userId as friendId2',
+        'fre.user_userId as receiver',
+        'fre.requester_userId as requesterId',
+      ])
+      .getRawOne();
+    let relation = 'stranger';
+    if (user) {
+      if (user.friendId1 && user.friendId2) {
+        relation = 'friend';
+      } else if (user.receiver == userId) {
+        relation = 'requester';
+      } else if (user.receiver == strangerId) {
+        relation = 'requesting';
+      } else if (userId == strangerId) {
+        relation = 'myself';
+      }
+    } else {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'USER_NOT_FOUND',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const { friendId1, friendId2, receiver, requesterId, ...data } = user;
+    return { ...data, relation: relation };
   }
 
   async getUserUpdateById(userId: number): Promise<UserEntity> {
@@ -274,5 +355,47 @@ export class UserService {
     });
     const data = await this.getUserById(userId);
     return data;
+  }
+
+  async fullTextSearchPeople(
+    userId: number,
+    searchQuery: string,
+    page: number,
+    pageSize: number,
+  ): Promise<UserSearchRawDto[]> {
+    if (!searchQuery) {
+      throw new HttpException(
+        {
+          status: HttpStatus.UNAUTHORIZED,
+          error: 'EMPTY_SEARCH_QUERY_PAYLOAD',
+        },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+    this.validatePagi(page, pageSize);
+    const firstJoin = `(ue.userId = fe.user_userId OR ue.userId = fe.friend_userId) AND (fe.user_userId != ${userId} AND fe.friend_userId != ${userId})`;
+    const secondJoin = `(fe2.user_userId = fe.user_userId OR fe2.user_userId = fe.friend_userId OR fe2.friend_userId = fe.friend_userId OR fe2.friend_userId = fe.user_userId) AND (fe2.user_userId = ${userId} OR fe2.friend_userId = ${userId}) 
+                          AND NOT((ue.userId = fe.user_userId AND ue.userId = fe2.user_userId) OR (ue.userId = fe.friend_userId AND ue.userId = fe2.friend_userId) OR (ue.userId = fe.user_userId AND ue.userId = fe2.friend_userId) OR (ue.userId = fe.friend_userId AND ue.userId = fe2.user_userId))`;
+    const peoples = await this.userRepo
+      .createQueryBuilder('ue')
+      .leftJoin(FriendEntity, 'fe', firstJoin)
+      .leftJoin(FriendEntity, 'fe2', secondJoin)
+      .where(`MATCH(ue.name) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
+      .orWhere(`MATCH(ue.location) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
+      .orWhere(`MATCH(ue.bio) AGAINST ('${searchQuery}' IN BOOLEAN MODE)`)
+      .select([
+        'COUNT(fe2.user_userId) as mutualFriend',
+        'ue.userId as userId',
+        'ue.name as name',
+        'ue.username as username',
+        'ue.profileImage as profileImage',
+        'ue.location as location',
+      ])
+      .groupBy('ue.userId')
+      .orderBy('mutualFriend', 'DESC')
+      .take(pageSize)
+      .skip((page - 1) * pageSize)
+      .getRawMany();
+    return peoples;
   }
 }

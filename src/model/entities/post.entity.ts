@@ -3,6 +3,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -19,7 +20,8 @@ export class PostEntity {
   @Column()
   secure: string;
 
-  @Column()
+  @Index({ fulltext: true })
+  @Column('text')
   content: string;
 
   @Column()
