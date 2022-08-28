@@ -112,6 +112,9 @@ export class AuthenticationController {
         );
       response.cookie('access_token', new_access_token.access_token, {
         httpOnly: true,
+        expires: new Date(Date.now() + 900000),
+        secure: true,
+        sameSite: 'none',
       });
       return { message: 'SUCESS_GENERATE_NEW_ACCESS_TOKEN' };
     } else {
