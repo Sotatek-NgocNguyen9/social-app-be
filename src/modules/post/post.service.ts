@@ -367,7 +367,6 @@ export class PostService {
     page: number,
     pageSize: number,
   ): Promise<PostRawInfoDto[]> {
-    console.log(searchQuery);
     if (!searchQuery) {
       throw new HttpException(
         {
@@ -412,7 +411,6 @@ export class PostService {
       .offset((page - 1) * pageSize)
       .limit(pageSize)
       .getRawMany();
-    console.log(posts);
     return posts;
   }
 }

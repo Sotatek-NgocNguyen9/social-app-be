@@ -32,10 +32,7 @@ export class AuthenticationController {
     const tokenAccess = await this.authenticationService.login(req.user);
     await this.authenticationService.createRefreshToken(tokenAccess, req.user);
     response.cookie('access_token', tokenAccess.access_token, {
-      httpOnly: true,
       expires: new Date(Date.now() + 900000),
-      secure: true,
-      sameSite: 'none',
     });
     const user = await this.authenticationService.getUserById(req.user.userId);
     return user;
@@ -65,10 +62,7 @@ export class AuthenticationController {
     const tokenAccess = await this.authenticationService.login(user);
     await this.authenticationService.createRefreshToken(tokenAccess, user);
     response.cookie('access_token', tokenAccess.access_token, {
-      httpOnly: true,
       expires: new Date(Date.now() + 900000),
-      secure: true,
-      sameSite: 'none',
     });
     return user;
   }
@@ -92,10 +86,7 @@ export class AuthenticationController {
     const tokenAccess = await this.authenticationService.login(user);
     await this.authenticationService.createRefreshToken(tokenAccess, user);
     response.cookie('access_token', tokenAccess.access_token, {
-      httpOnly: true,
       expires: new Date(Date.now() + 900000),
-      secure: true,
-      sameSite: 'none',
     });
     return user;
   }
@@ -110,10 +101,7 @@ export class AuthenticationController {
         String(req.cookies['access_token']),
       );
       response.cookie('access_token', createToken.access_token, {
-        httpOnly: true,
         expires: new Date(Date.now() + 900000),
-        secure: true,
-        sameSite: 'none',
       });
       return createToken.user;
     } else {

@@ -183,8 +183,8 @@ export class AuthenticationService {
         secret: String(process.env.JWT_ACCESS_TOKEN_SECRET),
         expiresIn: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRATION_TIME),
       });
-      const user = await this.getUserById(payloadAcc.userId);
       await this.cacheManager.set(access_token, refresh_token);
+      const user = await this.getUserById(payloadAcc.userId);
       return { access_token: access_token, user: user };
     } else {
       throw new UnauthorizedException();
