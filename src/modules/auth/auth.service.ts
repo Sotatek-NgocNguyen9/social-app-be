@@ -178,14 +178,17 @@ export class AuthenticationService {
     if (refresh_token) {
       const payload = this.jwtService.decode(String(refresh_token));
       const { iat, exp, ...payloadAcc } = JSON.parse(JSON.stringify(payload));
-      await this.cacheManager.del(expireAccToken);
-      const access_token = this.jwtService.sign(payloadAcc, {
+      const new_access_token = this.jwtService.sign(payloadAcc, {
         secret: String(process.env.JWT_ACCESS_TOKEN_SECRET),
         expiresIn: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRATION_TIME),
       });
-      await this.cacheManager.set(access_token, refresh_token);
+      await this.cacheManager.del(expireAccToken);
+      await this.cacheManager.set(new_access_token, refresh_token, {
+        ttl: parseInt(process.env.REDIS_REFRESH_TOKEN_TTL),
+      });
+      // delete the old token
       const user = await this.getUserById(payloadAcc.userId);
-      return { access_token: access_token, user: user };
+      return { access_token: new_access_token, user: user };
     } else {
       throw new UnauthorizedException();
     }
